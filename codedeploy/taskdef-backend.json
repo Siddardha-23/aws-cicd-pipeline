@@ -1,0 +1,62 @@
+{
+  "family": "opsboard-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "<EXECUTION_ROLE_ARN>",
+  "taskRoleArn": "<TASK_ROLE_ARN>",
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "<IMAGE1_NAME>",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 5000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "FLASK_ENV",
+          "value": "production"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DB_HOST",
+          "valueFrom": "/opsboard/production/db-host"
+        },
+        {
+          "name": "DB_NAME",
+          "valueFrom": "/opsboard/production/db-name"
+        },
+        {
+          "name": "DB_USERNAME",
+          "valueFrom": "/opsboard/production/db-username"
+        },
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": "/opsboard/production/db-password"
+        },
+        {
+          "name": "DB_PORT",
+          "valueFrom": "/opsboard/production/db-port"
+        },
+        {
+          "name": "FLASK_SECRET_KEY",
+          "valueFrom": "/opsboard/production/flask-secret-key"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/opsboard-backend",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "backend"
+        }
+      }
+    }
+  ]
+}

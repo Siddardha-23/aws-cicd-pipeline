@@ -1,0 +1,9 @@
+project_name       = "opsboard"
+environment        = "production"
+aws_region         = "us-east-1"
+domain_name        = "cicd.manneharshithsiddardha.com"
+root_domain        = "manneharshithsiddardha.com"
+db_name            = "opsboard"
+db_username        = "opsboard_admin"
+vpc_cidr           = "10.0.0.0/16"
+container_insights = false
