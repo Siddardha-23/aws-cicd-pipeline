@@ -13,24 +13,9 @@ output "alb_zone_id" {
   value       = aws_lb.main.zone_id
 }
 
-output "frontend_blue_tg_arn" {
-  description = "ARN of the frontend blue target group"
-  value       = aws_lb_target_group.frontend_blue.arn
-}
-
-output "frontend_green_tg_arn" {
-  description = "ARN of the frontend green target group"
-  value       = aws_lb_target_group.frontend_green.arn
-}
-
-output "backend_blue_tg_arn" {
-  description = "ARN of the backend blue target group"
-  value       = aws_lb_target_group.backend_blue.arn
-}
-
-output "backend_green_tg_arn" {
-  description = "ARN of the backend green target group"
-  value       = aws_lb_target_group.backend_green.arn
+output "alb_arn_suffix" {
+  description = "ARN suffix of the ALB for CloudWatch metrics"
+  value       = aws_lb.main.arn_suffix
 }
 
 output "https_listener_arn" {
@@ -43,37 +28,53 @@ output "test_listener_arn" {
   value       = aws_lb_listener.test.arn
 }
 
-output "alb_arn_suffix" {
-  description = "ARN suffix of the ALB for CloudWatch metrics"
-  value       = aws_lb.main.arn_suffix
+# Frontend target groups
+output "frontend_blue_tg_arn" {
+  value = aws_lb_target_group.frontend_blue.arn
 }
-
+output "frontend_green_tg_arn" {
+  value = aws_lb_target_group.frontend_green.arn
+}
 output "frontend_blue_tg_name" {
-  description = "Name of the frontend blue target group"
-  value       = aws_lb_target_group.frontend_blue.name
+  value = aws_lb_target_group.frontend_blue.name
 }
-
 output "frontend_green_tg_name" {
-  description = "Name of the frontend green target group"
-  value       = aws_lb_target_group.frontend_green.name
+  value = aws_lb_target_group.frontend_green.name
 }
-
-output "backend_blue_tg_name" {
-  description = "Name of the backend blue target group"
-  value       = aws_lb_target_group.backend_blue.name
-}
-
-output "backend_green_tg_name" {
-  description = "Name of the backend green target group"
-  value       = aws_lb_target_group.backend_green.name
-}
-
 output "frontend_blue_tg_arn_suffix" {
-  description = "ARN suffix of the frontend blue target group"
-  value       = aws_lb_target_group.frontend_blue.arn_suffix
+  value = aws_lb_target_group.frontend_blue.arn_suffix
 }
 
-output "backend_blue_tg_arn_suffix" {
-  description = "ARN suffix of the backend blue target group"
-  value       = aws_lb_target_group.backend_blue.arn_suffix
+# Core service target groups
+output "core_blue_tg_arn" {
+  value = aws_lb_target_group.core_blue.arn
+}
+output "core_green_tg_arn" {
+  value = aws_lb_target_group.core_green.arn
+}
+output "core_blue_tg_name" {
+  value = aws_lb_target_group.core_blue.name
+}
+output "core_green_tg_name" {
+  value = aws_lb_target_group.core_green.name
+}
+output "core_blue_tg_arn_suffix" {
+  value = aws_lb_target_group.core_blue.arn_suffix
+}
+
+# Deployment service target groups
+output "deployment_blue_tg_arn" {
+  value = aws_lb_target_group.deployment_blue.arn
+}
+output "deployment_green_tg_arn" {
+  value = aws_lb_target_group.deployment_green.arn
+}
+output "deployment_blue_tg_name" {
+  value = aws_lb_target_group.deployment_blue.name
+}
+output "deployment_green_tg_name" {
+  value = aws_lb_target_group.deployment_green.name
+}
+output "deployment_blue_tg_arn_suffix" {
+  value = aws_lb_target_group.deployment_blue.arn_suffix
 }

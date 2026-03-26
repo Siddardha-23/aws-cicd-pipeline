@@ -70,8 +70,8 @@ resource "aws_cloudwatch_metric_alarm" "frontend_unhealthy" {
   tags = var.common_tags
 }
 
-resource "aws_cloudwatch_metric_alarm" "backend_unhealthy" {
-  alarm_name          = "${var.name_prefix}-backend-unhealthy-targets"
+resource "aws_cloudwatch_metric_alarm" "core_unhealthy" {
+  alarm_name          = "${var.name_prefix}-core-unhealthy-targets"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "UnHealthyHostCount"
@@ -83,7 +83,7 @@ resource "aws_cloudwatch_metric_alarm" "backend_unhealthy" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    TargetGroup  = var.backend_tg_arn_suffix
+    TargetGroup  = var.core_tg_arn_suffix
     LoadBalancer = var.alb_arn_suffix
   }
 
@@ -120,8 +120,8 @@ resource "aws_cloudwatch_metric_alarm" "frontend_cpu" {
   tags = var.common_tags
 }
 
-resource "aws_cloudwatch_metric_alarm" "backend_cpu" {
-  alarm_name          = "${var.name_prefix}-backend-high-cpu"
+resource "aws_cloudwatch_metric_alarm" "core_cpu" {
+  alarm_name          = "${var.name_prefix}-core-high-cpu"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 3
   metric_name         = "CPUUtilization"
@@ -134,7 +134,7 @@ resource "aws_cloudwatch_metric_alarm" "backend_cpu" {
 
   dimensions = {
     ClusterName = var.ecs_cluster_name
-    ServiceName = var.backend_service_name
+    ServiceName = var.core_service_name
   }
 
   alarm_actions = [aws_sns_topic.alarms.arn]
@@ -170,8 +170,8 @@ resource "aws_cloudwatch_metric_alarm" "frontend_memory" {
   tags = var.common_tags
 }
 
-resource "aws_cloudwatch_metric_alarm" "backend_memory" {
-  alarm_name          = "${var.name_prefix}-backend-high-memory"
+resource "aws_cloudwatch_metric_alarm" "core_memory" {
+  alarm_name          = "${var.name_prefix}-core-high-memory"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 3
   metric_name         = "MemoryUtilization"
@@ -179,12 +179,85 @@ resource "aws_cloudwatch_metric_alarm" "backend_memory" {
   period              = 300
   statistic           = "Average"
   threshold           = 80
-  alarm_description   = "Backend ECS memory utilization above 80%"
+  alarm_description   = "Core-service ECS memory utilization above 80%"
   treat_missing_data  = "notBreaching"
 
   dimensions = {
     ClusterName = var.ecs_cluster_name
-    ServiceName = var.backend_service_name
+    ServiceName = var.core_service_name
+  }
+
+  alarm_actions = [aws_sns_topic.alarms.arn]
+  ok_actions    = [aws_sns_topic.alarms.arn]
+
+  tags = var.common_tags
+}
+
+################################################################################
+# Deployment Service Alarms
+################################################################################
+
+resource "aws_cloudwatch_metric_alarm" "deployment_unhealthy" {
+  alarm_name          = "${var.name_prefix}-deployment-unhealthy-targets"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "UnHealthyHostCount"
+  namespace           = "AWS/ApplicationELB"
+  period              = 60
+  statistic           = "Maximum"
+  threshold           = 0
+  alarm_description   = "Deployment-service has unhealthy targets"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    TargetGroup  = var.deployment_tg_arn_suffix
+    LoadBalancer = var.alb_arn_suffix
+  }
+
+  alarm_actions = [aws_sns_topic.alarms.arn]
+  ok_actions    = [aws_sns_topic.alarms.arn]
+
+  tags = var.common_tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "deployment_cpu" {
+  alarm_name          = "${var.name_prefix}-deployment-high-cpu"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 3
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/ECS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 80
+  alarm_description   = "Deployment-service ECS CPU utilization above 80%"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    ClusterName = var.ecs_cluster_name
+    ServiceName = var.deployment_service_name
+  }
+
+  alarm_actions = [aws_sns_topic.alarms.arn]
+  ok_actions    = [aws_sns_topic.alarms.arn]
+
+  tags = var.common_tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "deployment_memory" {
+  alarm_name          = "${var.name_prefix}-deployment-high-memory"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 3
+  metric_name         = "MemoryUtilization"
+  namespace           = "AWS/ECS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 80
+  alarm_description   = "Deployment-service ECS memory utilization above 80%"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    ClusterName = var.ecs_cluster_name
+    ServiceName = var.deployment_service_name
   }
 
   alarm_actions = [aws_sns_topic.alarms.arn]

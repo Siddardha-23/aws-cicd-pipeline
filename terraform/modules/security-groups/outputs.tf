@@ -8,9 +8,14 @@ output "frontend_sg_id" {
   value       = aws_security_group.frontend.id
 }
 
-output "backend_sg_id" {
-  description = "ID of the backend security group"
-  value       = aws_security_group.backend.id
+output "core_sg_id" {
+  description = "ID of the core-service security group"
+  value       = aws_security_group.core.id
+}
+
+output "deployment_sg_id" {
+  description = "ID of the deployment-service security group"
+  value       = aws_security_group.deployment.id
 }
 
 output "rds_sg_id" {

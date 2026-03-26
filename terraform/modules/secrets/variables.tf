@@ -8,9 +8,16 @@ variable "db_host" {
   type        = string
 }
 
-variable "db_name" {
-  description = "Database name"
+variable "core_db_name" {
+  description = "Database name for core-service"
   type        = string
+  default     = "opsboard_core"
+}
+
+variable "deployment_db_name" {
+  description = "Database name for deployment-service"
+  type        = string
+  default     = "opsboard_deployments"
 }
 
 variable "db_username" {

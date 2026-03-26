@@ -5,34 +5,70 @@ services:
     ports:
       - "3000:80"
     depends_on:
-      - backend
+      - core-service
+      - deployment-service
 
-  backend:
-    build: ./backend
+  core-service:
+    build: ./services/core-service
     ports:
       - "5000:5000"
     environment:
       - FLASK_ENV=development
-      - DB_HOST=postgres
+      - DB_HOST=postgres-core
       - DB_PORT=5432
-      - DB_NAME=opsboard
+      - DB_NAME=opsboard_core
+      - DB_USERNAME=opsboard
+      - DB_PASSWORD=opsboard_dev_password
+      - FLASK_SECRET_KEY=dev-secret-key-change-in-production
+      - DEPLOYMENT_SERVICE_URL=http://deployment-service:5001
+    depends_on:
+      postgres-core:
+        condition: service_healthy
+      deployment-service:
+        condition: service_started
+
+  deployment-service:
+    build: ./services/deployment-service
+    ports:
+      - "5001:5001"
+    environment:
+      - FLASK_ENV=development
+      - DB_HOST=postgres-deployment
+      - DB_PORT=5432
+      - DB_NAME=opsboard_deployments
       - DB_USERNAME=opsboard
       - DB_PASSWORD=opsboard_dev_password
       - FLASK_SECRET_KEY=dev-secret-key-change-in-production
     depends_on:
-      postgres:
+      postgres-deployment:
         condition: service_healthy
 
-  postgres:
+  postgres-core:
     image: postgres:15-alpine
     environment:
-      - POSTGRES_DB=opsboard
+      - POSTGRES_DB=opsboard_core
       - POSTGRES_USER=opsboard
       - POSTGRES_PASSWORD=opsboard_dev_password
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata-core:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opsboard"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-deployment:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=opsboard_deployments
+      - POSTGRES_USER=opsboard
+      - POSTGRES_PASSWORD=opsboard_dev_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata-deployment:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U opsboard"]
       interval: 5s
@@ -40,4 +76,5 @@ services:
       retries: 5
 
 volumes:
-  pgdata:
+  pgdata-core:
+  pgdata-deployment:

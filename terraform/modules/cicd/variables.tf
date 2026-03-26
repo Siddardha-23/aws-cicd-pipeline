@@ -19,8 +19,13 @@ variable "frontend_ecr_repo_uri" {
   type        = string
 }
 
-variable "backend_ecr_repo_uri" {
-  description = "ECR repository URI for backend"
+variable "core_ecr_repo_uri" {
+  description = "ECR repository URI for core-service"
+  type        = string
+}
+
+variable "deployment_ecr_repo_uri" {
+  description = "ECR repository URI for deployment-service"
   type        = string
 }
 
@@ -34,29 +39,33 @@ variable "frontend_service_name" {
   type        = string
 }
 
-variable "backend_service_name" {
-  description = "Name of the backend ECS service"
+variable "core_service_name" {
+  description = "Name of the core ECS service"
+  type        = string
+}
+
+variable "deployment_service_name" {
+  description = "Name of the deployment ECS service"
   type        = string
 }
 
 variable "frontend_blue_tg_name" {
-  description = "Name of the frontend blue target group"
-  type        = string
+  type = string
 }
-
 variable "frontend_green_tg_name" {
-  description = "Name of the frontend green target group"
-  type        = string
+  type = string
 }
-
-variable "backend_blue_tg_name" {
-  description = "Name of the backend blue target group"
-  type        = string
+variable "core_blue_tg_name" {
+  type = string
 }
-
-variable "backend_green_tg_name" {
-  description = "Name of the backend green target group"
-  type        = string
+variable "core_green_tg_name" {
+  type = string
+}
+variable "deployment_blue_tg_name" {
+  type = string
+}
+variable "deployment_green_tg_name" {
+  type = string
 }
 
 variable "https_listener_arn" {

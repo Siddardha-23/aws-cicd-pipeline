@@ -13,8 +13,13 @@ variable "frontend_tg_arn_suffix" {
   type        = string
 }
 
-variable "backend_tg_arn_suffix" {
-  description = "ARN suffix of the backend target group"
+variable "core_tg_arn_suffix" {
+  description = "ARN suffix of the core-service target group"
+  type        = string
+}
+
+variable "deployment_tg_arn_suffix" {
+  description = "ARN suffix of the deployment-service target group"
   type        = string
 }
 
@@ -28,8 +33,13 @@ variable "frontend_service_name" {
   type        = string
 }
 
-variable "backend_service_name" {
-  description = "Name of the backend ECS service"
+variable "core_service_name" {
+  description = "Name of the core ECS service"
+  type        = string
+}
+
+variable "deployment_service_name" {
+  description = "Name of the deployment ECS service"
   type        = string
 }
 

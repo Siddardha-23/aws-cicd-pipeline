@@ -114,7 +114,7 @@ resource "aws_iam_role_policy" "codebuild" {
 }
 
 ################################################################################
-# CodeBuild Projects
+# CodeBuild Projects (3 parallel builds)
 ################################################################################
 
 resource "aws_codebuild_project" "frontend" {
@@ -159,9 +159,9 @@ resource "aws_codebuild_project" "frontend" {
   })
 }
 
-resource "aws_codebuild_project" "backend" {
-  name         = "${var.name_prefix}-backend-build"
-  description  = "Build backend Docker image"
+resource "aws_codebuild_project" "core" {
+  name         = "${var.name_prefix}-core-build"
+  description  = "Build core-service Docker image"
   service_role = aws_iam_role.codebuild.arn
 
   artifacts {
@@ -182,7 +182,7 @@ resource "aws_codebuild_project" "backend" {
 
     environment_variable {
       name  = "ECR_REPO_URI"
-      value = var.backend_ecr_repo_uri
+      value = var.core_ecr_repo_uri
     }
 
     environment_variable {
@@ -193,11 +193,53 @@ resource "aws_codebuild_project" "backend" {
 
   source {
     type      = "CODEPIPELINE"
-    buildspec = "buildspec-backend.yml"
+    buildspec = "buildspec-core.yml"
   }
 
   tags = merge(var.common_tags, {
-    Name = "${var.name_prefix}-backend-build"
+    Name = "${var.name_prefix}-core-build"
+  })
+}
+
+resource "aws_codebuild_project" "deployment" {
+  name         = "${var.name_prefix}-deployment-build"
+  description  = "Build deployment-service Docker image"
+  service_role = aws_iam_role.codebuild.arn
+
+  artifacts {
+    type = "CODEPIPELINE"
+  }
+
+  environment {
+    compute_type                = "BUILD_GENERAL1_SMALL"
+    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    type                        = "LINUX_CONTAINER"
+    image_pull_credentials_type = "CODEBUILD"
+    privileged_mode             = true
+
+    environment_variable {
+      name  = "AWS_ACCOUNT_ID"
+      value = var.account_id
+    }
+
+    environment_variable {
+      name  = "ECR_REPO_URI"
+      value = var.deployment_ecr_repo_uri
+    }
+
+    environment_variable {
+      name  = "AWS_DEFAULT_REGION"
+      value = var.aws_region
+    }
+  }
+
+  source {
+    type      = "CODEPIPELINE"
+    buildspec = "buildspec-deployment.yml"
+  }
+
+  tags = merge(var.common_tags, {
+    Name = "${var.name_prefix}-deployment-build"
   })
 }
 
@@ -234,11 +276,11 @@ resource "aws_iam_role_policy_attachment" "codedeploy_ecs" {
 # CodeDeploy Applications and Deployment Groups
 ################################################################################
 
+# --- Frontend ---
 resource "aws_codedeploy_app" "frontend" {
   compute_platform = "ECS"
   name             = "${var.name_prefix}-frontend"
-
-  tags = var.common_tags
+  tags             = var.common_tags
 }
 
 resource "aws_codedeploy_deployment_group" "frontend" {
@@ -256,7 +298,6 @@ resource "aws_codedeploy_deployment_group" "frontend" {
     deployment_ready_option {
       action_on_timeout = "CONTINUE_DEPLOYMENT"
     }
-
     terminate_blue_instances_on_deployment_success {
       action                           = "TERMINATE"
       termination_wait_time_in_minutes = 5
@@ -278,15 +319,12 @@ resource "aws_codedeploy_deployment_group" "frontend" {
       prod_traffic_route {
         listener_arns = [var.https_listener_arn]
       }
-
       test_traffic_route {
         listener_arns = [var.test_listener_arn]
       }
-
       target_group {
         name = var.frontend_blue_tg_name
       }
-
       target_group {
         name = var.frontend_green_tg_name
       }
@@ -296,16 +334,16 @@ resource "aws_codedeploy_deployment_group" "frontend" {
   tags = var.common_tags
 }
 
-resource "aws_codedeploy_app" "backend" {
+# --- Core Service ---
+resource "aws_codedeploy_app" "core" {
   compute_platform = "ECS"
-  name             = "${var.name_prefix}-backend"
-
-  tags = var.common_tags
+  name             = "${var.name_prefix}-core"
+  tags             = var.common_tags
 }
 
-resource "aws_codedeploy_deployment_group" "backend" {
-  app_name               = aws_codedeploy_app.backend.name
-  deployment_group_name  = "${var.name_prefix}-backend-dg"
+resource "aws_codedeploy_deployment_group" "core" {
+  app_name               = aws_codedeploy_app.core.name
+  deployment_group_name  = "${var.name_prefix}-core-dg"
   deployment_config_name = "CodeDeployDefault.ECSAllAtOnce"
   service_role_arn       = aws_iam_role.codedeploy.arn
 
@@ -318,7 +356,6 @@ resource "aws_codedeploy_deployment_group" "backend" {
     deployment_ready_option {
       action_on_timeout = "CONTINUE_DEPLOYMENT"
     }
-
     terminate_blue_instances_on_deployment_success {
       action                           = "TERMINATE"
       termination_wait_time_in_minutes = 5
@@ -332,7 +369,7 @@ resource "aws_codedeploy_deployment_group" "backend" {
 
   ecs_service {
     cluster_name = var.ecs_cluster_name
-    service_name = var.backend_service_name
+    service_name = var.core_service_name
   }
 
   load_balancer_info {
@@ -340,17 +377,72 @@ resource "aws_codedeploy_deployment_group" "backend" {
       prod_traffic_route {
         listener_arns = [var.https_listener_arn]
       }
-
       test_traffic_route {
         listener_arns = [var.test_listener_arn]
       }
-
       target_group {
-        name = var.backend_blue_tg_name
+        name = var.core_blue_tg_name
       }
-
       target_group {
-        name = var.backend_green_tg_name
+        name = var.core_green_tg_name
+      }
+    }
+  }
+
+  tags = var.common_tags
+}
+
+# --- Deployment Service ---
+resource "aws_codedeploy_app" "deployment" {
+  compute_platform = "ECS"
+  name             = "${var.name_prefix}-deployment"
+  tags             = var.common_tags
+}
+
+resource "aws_codedeploy_deployment_group" "deployment" {
+  app_name               = aws_codedeploy_app.deployment.name
+  deployment_group_name  = "${var.name_prefix}-deployment-dg"
+  deployment_config_name = "CodeDeployDefault.ECSAllAtOnce"
+  service_role_arn       = aws_iam_role.codedeploy.arn
+
+  auto_rollback_configuration {
+    enabled = true
+    events  = ["DEPLOYMENT_FAILURE"]
+  }
+
+  blue_green_deployment_config {
+    deployment_ready_option {
+      action_on_timeout = "CONTINUE_DEPLOYMENT"
+    }
+    terminate_blue_instances_on_deployment_success {
+      action                           = "TERMINATE"
+      termination_wait_time_in_minutes = 5
+    }
+  }
+
+  deployment_style {
+    deployment_option = "WITH_TRAFFIC_CONTROL"
+    deployment_type   = "BLUE_GREEN"
+  }
+
+  ecs_service {
+    cluster_name = var.ecs_cluster_name
+    service_name = var.deployment_service_name
+  }
+
+  load_balancer_info {
+    target_group_pair_info {
+      prod_traffic_route {
+        listener_arns = [var.https_listener_arn]
+      }
+      test_traffic_route {
+        listener_arns = [var.test_listener_arn]
+      }
+      target_group {
+        name = var.deployment_blue_tg_name
+      }
+      target_group {
+        name = var.deployment_green_tg_name
       }
     }
   }
@@ -384,10 +476,8 @@ resource "aws_iam_role" "pipeline" {
 
 data "aws_iam_policy_document" "pipeline_policy" {
   statement {
-    sid = "CodeStarConnection"
-    actions = [
-      "codestar-connections:UseConnection",
-    ]
+    sid       = "CodeStarConnection"
+    actions   = ["codestar-connections:UseConnection"]
     resources = [aws_codestarconnections_connection.github.arn]
   }
 
@@ -412,7 +502,8 @@ data "aws_iam_policy_document" "pipeline_policy" {
     ]
     resources = [
       aws_codebuild_project.frontend.arn,
-      aws_codebuild_project.backend.arn,
+      aws_codebuild_project.core.arn,
+      aws_codebuild_project.deployment.arn,
     ]
   }
 
@@ -441,10 +532,8 @@ data "aws_iam_policy_document" "pipeline_policy" {
   }
 
   statement {
-    sid = "IAMPassRole"
-    actions = [
-      "iam:PassRole",
-    ]
+    sid       = "IAMPassRole"
+    actions   = ["iam:PassRole"]
     resources = ["*"]
     condition {
       test     = "StringEqualsIfExists"
@@ -461,7 +550,7 @@ resource "aws_iam_role_policy" "pipeline" {
 }
 
 ################################################################################
-# CodePipeline
+# CodePipeline (3 parallel builds, 3 sequential deploys)
 ################################################################################
 
 resource "aws_codepipeline" "main" {
@@ -511,17 +600,32 @@ resource "aws_codepipeline" "main" {
     }
 
     action {
-      name             = "backend-build"
+      name             = "core-build"
       category         = "Build"
       owner            = "AWS"
       provider         = "CodeBuild"
       version          = "1"
       input_artifacts  = ["source_output"]
-      output_artifacts = ["backend_build_output"]
+      output_artifacts = ["core_build_output"]
       run_order        = 1
 
       configuration = {
-        ProjectName = aws_codebuild_project.backend.name
+        ProjectName = aws_codebuild_project.core.name
+      }
+    }
+
+    action {
+      name             = "deployment-build"
+      category         = "Build"
+      owner            = "AWS"
+      provider         = "CodeBuild"
+      version          = "1"
+      input_artifacts  = ["source_output"]
+      output_artifacts = ["deployment_build_output"]
+      run_order        = 1
+
+      configuration = {
+        ProjectName = aws_codebuild_project.deployment.name
       }
     }
   }
@@ -529,27 +633,51 @@ resource "aws_codepipeline" "main" {
   stage {
     name = "Deploy"
 
+    # Deploy deployment-service first (core-service depends on it)
     action {
-      name            = "deploy-backend"
+      name            = "deploy-deployment"
       category        = "Deploy"
       owner           = "AWS"
       provider        = "CodeDeployToECS"
       version         = "1"
-      input_artifacts = ["backend_build_output", "source_output"]
+      input_artifacts = ["deployment_build_output", "source_output"]
       run_order       = 1
 
       configuration = {
-        ApplicationName                = aws_codedeploy_app.backend.name
-        DeploymentGroupName            = aws_codedeploy_deployment_group.backend.deployment_group_name
+        ApplicationName                = aws_codedeploy_app.deployment.name
+        DeploymentGroupName            = aws_codedeploy_deployment_group.deployment.deployment_group_name
         AppSpecTemplateArtifact        = "source_output"
-        AppSpecTemplatePath            = "codedeploy/appspec-backend.yaml"
+        AppSpecTemplatePath            = "codedeploy/appspec-deployment.yaml"
         TaskDefinitionTemplateArtifact = "source_output"
-        TaskDefinitionTemplatePath     = "codedeploy/taskdef-backend.json"
-        Image1ArtifactName             = "backend_build_output"
+        TaskDefinitionTemplatePath     = "codedeploy/taskdef-deployment.json"
+        Image1ArtifactName             = "deployment_build_output"
         Image1ContainerName            = "IMAGE1_NAME"
       }
     }
 
+    # Deploy core-service after deployment-service is healthy
+    action {
+      name            = "deploy-core"
+      category        = "Deploy"
+      owner           = "AWS"
+      provider        = "CodeDeployToECS"
+      version         = "1"
+      input_artifacts = ["core_build_output", "source_output"]
+      run_order       = 2
+
+      configuration = {
+        ApplicationName                = aws_codedeploy_app.core.name
+        DeploymentGroupName            = aws_codedeploy_deployment_group.core.deployment_group_name
+        AppSpecTemplateArtifact        = "source_output"
+        AppSpecTemplatePath            = "codedeploy/appspec-core.yaml"
+        TaskDefinitionTemplateArtifact = "source_output"
+        TaskDefinitionTemplatePath     = "codedeploy/taskdef-core.json"
+        Image1ArtifactName             = "core_build_output"
+        Image1ContainerName            = "IMAGE1_NAME"
+      }
+    }
+
+    # Deploy frontend last
     action {
       name            = "deploy-frontend"
       category        = "Deploy"
@@ -557,7 +685,7 @@ resource "aws_codepipeline" "main" {
       provider        = "CodeDeployToECS"
       version         = "1"
       input_artifacts = ["frontend_build_output", "source_output"]
-      run_order       = 2
+      run_order       = 3
 
       configuration = {
         ApplicationName                = aws_codedeploy_app.frontend.name

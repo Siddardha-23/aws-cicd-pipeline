@@ -15,7 +15,7 @@ resource "aws_lb" "main" {
 }
 
 ################################################################################
-# Target Groups
+# Frontend Target Groups (Blue/Green)
 ################################################################################
 
 resource "aws_lb_target_group" "frontend_blue" {
@@ -64,8 +64,12 @@ resource "aws_lb_target_group" "frontend_green" {
   })
 }
 
-resource "aws_lb_target_group" "backend_blue" {
-  name                 = "${var.name_prefix}-be-blue"
+################################################################################
+# Core Service Target Groups (Blue/Green)
+################################################################################
+
+resource "aws_lb_target_group" "core_blue" {
+  name                 = "${var.name_prefix}-core-blue"
   port                 = 5000
   protocol             = "HTTP"
   vpc_id               = var.vpc_id
@@ -83,12 +87,12 @@ resource "aws_lb_target_group" "backend_blue" {
   }
 
   tags = merge(var.common_tags, {
-    Name = "${var.name_prefix}-backend-blue"
+    Name = "${var.name_prefix}-core-blue"
   })
 }
 
-resource "aws_lb_target_group" "backend_green" {
-  name                 = "${var.name_prefix}-be-green"
+resource "aws_lb_target_group" "core_green" {
+  name                 = "${var.name_prefix}-core-grn"
   port                 = 5000
   protocol             = "HTTP"
   vpc_id               = var.vpc_id
@@ -106,7 +110,57 @@ resource "aws_lb_target_group" "backend_green" {
   }
 
   tags = merge(var.common_tags, {
-    Name = "${var.name_prefix}-backend-green"
+    Name = "${var.name_prefix}-core-green"
+  })
+}
+
+################################################################################
+# Deployment Service Target Groups (Blue/Green)
+################################################################################
+
+resource "aws_lb_target_group" "deployment_blue" {
+  name                 = "${var.name_prefix}-dep-blue"
+  port                 = 5001
+  protocol             = "HTTP"
+  vpc_id               = var.vpc_id
+  target_type          = "ip"
+  deregistration_delay = 30
+
+  health_check {
+    enabled             = true
+    path                = "/api/v1/health"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    matcher             = "200"
+  }
+
+  tags = merge(var.common_tags, {
+    Name = "${var.name_prefix}-deployment-blue"
+  })
+}
+
+resource "aws_lb_target_group" "deployment_green" {
+  name                 = "${var.name_prefix}-dep-green"
+  port                 = 5001
+  protocol             = "HTTP"
+  vpc_id               = var.vpc_id
+  target_type          = "ip"
+  deregistration_delay = 30
+
+  health_check {
+    enabled             = true
+    path                = "/api/v1/health"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    matcher             = "200"
+  }
+
+  tags = merge(var.common_tags, {
+    Name = "${var.name_prefix}-deployment-green"
   })
 }
 
@@ -131,13 +185,33 @@ resource "aws_lb_listener" "https" {
   })
 }
 
-resource "aws_lb_listener_rule" "https_backend" {
+# Priority 90: /api/v1/deployments* → deployment-service (evaluated first)
+resource "aws_lb_listener_rule" "https_deployments" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 90
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.deployment_blue.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/v1/deployments", "/api/v1/deployments/*"]
+    }
+  }
+
+  tags = var.common_tags
+}
+
+# Priority 100: /api/* → core-service (catch-all for remaining API routes)
+resource "aws_lb_listener_rule" "https_core" {
   listener_arn = aws_lb_listener.https.arn
   priority     = 100
 
   action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.backend_blue.arn
+    target_group_arn = aws_lb_target_group.core_blue.arn
   }
 
   condition {
@@ -194,13 +268,31 @@ resource "aws_lb_listener" "test" {
   })
 }
 
-resource "aws_lb_listener_rule" "test_backend" {
+resource "aws_lb_listener_rule" "test_deployments" {
+  listener_arn = aws_lb_listener.test.arn
+  priority     = 90
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.deployment_green.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/v1/deployments", "/api/v1/deployments/*"]
+    }
+  }
+
+  tags = var.common_tags
+}
+
+resource "aws_lb_listener_rule" "test_core" {
   listener_arn = aws_lb_listener.test.arn
   priority     = 100
 
   action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.backend_green.arn
+    target_group_arn = aws_lb_target_group.core_green.arn
   }
 
   condition {

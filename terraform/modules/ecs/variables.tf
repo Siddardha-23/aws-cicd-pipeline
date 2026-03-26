@@ -23,8 +23,13 @@ variable "frontend_sg_id" {
   type        = string
 }
 
-variable "backend_sg_id" {
-  description = "Security group ID for backend tasks"
+variable "core_sg_id" {
+  description = "Security group ID for core-service tasks"
+  type        = string
+}
+
+variable "deployment_sg_id" {
+  description = "Security group ID for deployment-service tasks"
   type        = string
 }
 
@@ -33,8 +38,13 @@ variable "frontend_repo_url" {
   type        = string
 }
 
-variable "backend_repo_url" {
-  description = "ECR repository URL for backend"
+variable "core_repo_url" {
+  description = "ECR repository URL for core-service"
+  type        = string
+}
+
+variable "deployment_repo_url" {
+  description = "ECR repository URL for deployment-service"
   type        = string
 }
 
@@ -43,18 +53,28 @@ variable "frontend_tg_arn" {
   type        = string
 }
 
-variable "backend_tg_arn" {
-  description = "ARN of the backend blue target group"
+variable "core_tg_arn" {
+  description = "ARN of the core-service blue target group"
+  type        = string
+}
+
+variable "deployment_tg_arn" {
+  description = "ARN of the deployment-service blue target group"
   type        = string
 }
 
 variable "ssm_parameter_arns" {
-  description = "List of SSM parameter ARNs the task execution role needs access to"
+  description = "List of all SSM parameter ARNs the task execution role needs access to"
   type        = list(string)
 }
 
-variable "ssm_parameter_names" {
-  description = "Map of SSM parameter names"
+variable "core_ssm_parameter_names" {
+  description = "Map of SSM parameter names for core-service"
+  type        = map(string)
+}
+
+variable "deployment_ssm_parameter_names" {
+  description = "Map of SSM parameter names for deployment-service"
   type        = map(string)
 }
 

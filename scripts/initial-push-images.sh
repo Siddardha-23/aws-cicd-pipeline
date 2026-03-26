@@ -15,8 +15,12 @@ echo "Building and pushing frontend..."
 docker build -t ${ECR_BASE}/${PREFIX}-frontend:latest frontend/
 docker push ${ECR_BASE}/${PREFIX}-frontend:latest
 
-echo "Building and pushing backend..."
-docker build -t ${ECR_BASE}/${PREFIX}-backend:latest backend/
-docker push ${ECR_BASE}/${PREFIX}-backend:latest
+echo "Building and pushing core-service..."
+docker build -t ${ECR_BASE}/${PREFIX}-core:latest services/core-service/
+docker push ${ECR_BASE}/${PREFIX}-core:latest
+
+echo "Building and pushing deployment-service..."
+docker build -t ${ECR_BASE}/${PREFIX}-deployment:latest services/deployment-service/
+docker push ${ECR_BASE}/${PREFIX}-deployment:latest
 
 echo "Initial images pushed successfully!"

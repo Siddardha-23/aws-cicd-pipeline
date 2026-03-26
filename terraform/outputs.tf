@@ -4,10 +4,11 @@ output "alb_dns" {
 }
 
 output "ecr_repo_urls" {
-  description = "ECR repository URLs for frontend and backend"
+  description = "ECR repository URLs"
   value = {
-    frontend = module.ecr.frontend_repo_url
-    backend  = module.ecr.backend_repo_url
+    frontend   = module.ecr.frontend_repo_url
+    core       = module.ecr.core_repo_url
+    deployment = module.ecr.deployment_repo_url
   }
 }
 

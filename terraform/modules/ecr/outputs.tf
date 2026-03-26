@@ -3,9 +3,14 @@ output "frontend_repo_url" {
   value       = aws_ecr_repository.frontend.repository_url
 }
 
-output "backend_repo_url" {
-  description = "URL of the backend ECR repository"
-  value       = aws_ecr_repository.backend.repository_url
+output "core_repo_url" {
+  description = "URL of the core service ECR repository"
+  value       = aws_ecr_repository.core.repository_url
+}
+
+output "deployment_repo_url" {
+  description = "URL of the deployment service ECR repository"
+  value       = aws_ecr_repository.deployment.repository_url
 }
 
 output "frontend_repo_arn" {
@@ -13,7 +18,12 @@ output "frontend_repo_arn" {
   value       = aws_ecr_repository.frontend.arn
 }
 
-output "backend_repo_arn" {
-  description = "ARN of the backend ECR repository"
-  value       = aws_ecr_repository.backend.arn
+output "core_repo_arn" {
+  description = "ARN of the core service ECR repository"
+  value       = aws_ecr_repository.core.arn
+}
+
+output "deployment_repo_arn" {
+  description = "ARN of the deployment service ECR repository"
+  value       = aws_ecr_repository.deployment.arn
 }

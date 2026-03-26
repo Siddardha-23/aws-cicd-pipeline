@@ -75,12 +75,12 @@ resource "aws_security_group" "frontend" {
 }
 
 ################################################################################
-# Backend Security Group
+# Core Service Security Group
 ################################################################################
 
-resource "aws_security_group" "backend" {
-  name_prefix = "${var.name_prefix}-backend-"
-  description = "Security group for backend ECS tasks"
+resource "aws_security_group" "core" {
+  name_prefix = "${var.name_prefix}-core-"
+  description = "Security group for core-service ECS tasks"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -100,7 +100,45 @@ resource "aws_security_group" "backend" {
   }
 
   tags = merge(var.common_tags, {
-    Name = "${var.name_prefix}-backend-sg"
+    Name = "${var.name_prefix}-core-sg"
+  })
+}
+
+################################################################################
+# Deployment Service Security Group
+################################################################################
+
+resource "aws_security_group" "deployment" {
+  name_prefix = "${var.name_prefix}-deployment-"
+  description = "Security group for deployment-service ECS tasks"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    description     = "App port from ALB"
+    from_port       = 5001
+    to_port         = 5001
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+
+  ingress {
+    description     = "Internal API from core-service"
+    from_port       = 5001
+    to_port         = 5001
+    protocol        = "tcp"
+    security_groups = [aws_security_group.core.id]
+  }
+
+  egress {
+    description = "Allow all outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(var.common_tags, {
+    Name = "${var.name_prefix}-deployment-sg"
   })
 }
 
@@ -114,11 +152,19 @@ resource "aws_security_group" "rds" {
   vpc_id      = var.vpc_id
 
   ingress {
-    description     = "PostgreSQL from backend"
+    description     = "PostgreSQL from core-service"
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
-    security_groups = [aws_security_group.backend.id]
+    security_groups = [aws_security_group.core.id]
+  }
+
+  ingress {
+    description     = "PostgreSQL from deployment-service"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.deployment.id]
   }
 
   egress {
