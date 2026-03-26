@@ -106,6 +106,20 @@ module "cicd" {
   common_tags            = local.common_tags
 }
 
+module "monitoring" {
+  source = "./modules/monitoring"
+
+  name_prefix            = local.name_prefix
+  alb_arn_suffix         = module.alb.alb_arn_suffix
+  frontend_tg_arn_suffix = module.alb.frontend_blue_tg_arn_suffix
+  backend_tg_arn_suffix  = module.alb.backend_blue_tg_arn_suffix
+  ecs_cluster_name       = module.ecs.cluster_name
+  frontend_service_name  = module.ecs.frontend_service_name
+  backend_service_name   = module.ecs.backend_service_name
+  alarm_email            = var.alarm_email
+  common_tags            = local.common_tags
+}
+
 ################################################################################
 # Route53 A Record (Alias to ALB)
 ################################################################################

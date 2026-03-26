@@ -49,3 +49,9 @@ variable "container_insights" {
   type        = bool
   default     = false
 }
+
+variable "alarm_email" {
+  description = "Email address for CloudWatch alarm notifications"
+  type        = string
+  default     = ""
+}

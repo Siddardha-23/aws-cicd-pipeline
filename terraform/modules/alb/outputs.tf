@@ -67,3 +67,13 @@ output "backend_green_tg_name" {
   description = "Name of the backend green target group"
   value       = aws_lb_target_group.backend_green.name
 }
+
+output "frontend_blue_tg_arn_suffix" {
+  description = "ARN suffix of the frontend blue target group"
+  value       = aws_lb_target_group.frontend_blue.arn_suffix
+}
+
+output "backend_blue_tg_arn_suffix" {
+  description = "ARN suffix of the backend blue target group"
+  value       = aws_lb_target_group.backend_blue.arn_suffix
+}

@@ -245,6 +245,77 @@ resource "aws_ecs_task_definition" "backend" {
 }
 
 ################################################################################
+# Database Migration Task Definition
+################################################################################
+
+resource "aws_ecs_task_definition" "migration" {
+  family                   = "${var.name_prefix}-migration"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.task_execution.arn
+  task_role_arn            = aws_iam_role.task.arn
+
+  container_definitions = jsonencode([
+    {
+      name      = "migration"
+      image     = "${var.backend_repo_url}:PLACEHOLDER"
+      essential = true
+
+      command = ["./migrate.sh"]
+
+      environment = [
+        {
+          name  = "FLASK_ENV"
+          value = "production"
+        }
+      ]
+
+      secrets = [
+        {
+          name      = "DB_HOST"
+          valueFrom = var.ssm_parameter_names["db_host"]
+        },
+        {
+          name      = "DB_NAME"
+          valueFrom = var.ssm_parameter_names["db_name"]
+        },
+        {
+          name      = "DB_USERNAME"
+          valueFrom = var.ssm_parameter_names["db_username"]
+        },
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = var.ssm_parameter_names["db_password"]
+        },
+        {
+          name      = "DB_PORT"
+          valueFrom = var.ssm_parameter_names["db_port"]
+        },
+        {
+          name      = "FLASK_SECRET_KEY"
+          valueFrom = var.ssm_parameter_names["flask_secret_key"]
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.backend.name
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "migration"
+        }
+      }
+    }
+  ])
+
+  tags = merge(var.common_tags, {
+    Name = "${var.name_prefix}-migration-task"
+  })
+}
+
+################################################################################
 # Frontend ECS Service
 ################################################################################
 

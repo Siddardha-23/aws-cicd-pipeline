@@ -32,3 +32,8 @@ output "task_execution_role_arn" {
   description = "ARN of the task execution IAM role"
   value       = aws_iam_role.task_execution.arn
 }
+
+output "migration_task_def_arn" {
+  description = "ARN of the database migration task definition"
+  value       = aws_ecs_task_definition.migration.arn
+}

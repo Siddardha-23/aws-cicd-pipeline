@@ -1,7 +1,15 @@
 version: 0.2
 phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - echo Installing frontend dependencies...
+      - cd frontend && npm ci && cd ..
   pre_build:
     commands:
+      - echo Running lint and type check...
+      - cd frontend && npm run lint && npx tsc -b && cd ..
       - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
       - REPOSITORY_URI=$ECR_REPO_URI

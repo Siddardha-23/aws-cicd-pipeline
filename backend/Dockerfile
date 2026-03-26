@@ -10,7 +10,7 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 WORKDIR /app
 COPY --from=deps /install /usr/local
 COPY . .
-RUN chmod +x entrypoint.sh && chown -R appuser:appuser /app
+RUN chmod +x entrypoint.sh migrate.sh && chown -R appuser:appuser /app
 USER appuser
 EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=3s CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/v1/health')" || exit 1
