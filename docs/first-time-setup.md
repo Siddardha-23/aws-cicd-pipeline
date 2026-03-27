@@ -51,7 +51,7 @@ This script creates:
 - An S3 bucket: `opsboard-terraform-state-<account-id>`
 - A DynamoDB table: `opsboard-terraform-locks`
 
-After running the script, uncomment the backend configuration in `terraform/backend.tf` and replace the placeholder with your AWS account ID:
+After running the script, update `terraform/backend.tf` and replace `<ACCOUNT_ID>` with your AWS account ID:
 
 ```hcl
 terraform {
@@ -88,6 +88,7 @@ db_name            = "opsboard"
 db_username        = "opsboard_admin"
 vpc_cidr           = "10.0.0.0/16"
 container_insights = false                        # Set to true if you want ECS insights (adds cost)
+alarm_email        = "your-email@example.com"     # Optional: receive CloudWatch alarm notifications
 ```
 
 ---
@@ -110,14 +111,15 @@ terraform apply
 This takes approximately 10-15 minutes. Terraform creates:
 - VPC with 6 subnets (2 public, 2 private, 2 isolated)
 - NAT instance, Internet Gateway, route tables
-- Security groups for ALB, frontend, backend, and RDS
-- ECR repositories for frontend and backend images
-- RDS PostgreSQL instance
-- SSM parameters for database credentials
+- Security groups for ALB, frontend, core-service, deployment-service, and RDS
+- ECR repositories for frontend, core-service, and deployment-service images
+- RDS PostgreSQL instance (shared by both backend services with separate databases)
+- SSM parameters for database credentials (per-service) and Flask secret key
 - ACM certificate (with DNS validation via Route 53)
-- ALB with HTTPS listener and 4 target groups (blue/green for each service)
-- ECS cluster, task definitions, and services
-- CodePipeline, CodeBuild project, and CodeDeploy applications
+- ALB with HTTPS listener, path-based routing, and 6 target groups (blue/green for each service)
+- ECS cluster with 3 services, task definitions, and Cloud Map service discovery
+- CodePipeline with 3 parallel builds and 3 sequential deploys (CodeDeploy blue/green)
+- CloudWatch alarms (5xx errors, unhealthy targets, CPU/memory per service)
 - Route 53 A record pointing to the ALB
 
 **Save the outputs.** You will need the ECR repository URLs:
@@ -144,33 +146,32 @@ The connection status should change from `PENDING` to `AVAILABLE`.
 
 ## Step 6: Push Initial Docker Images to ECR
 
-ECS services will fail to start until valid images exist in ECR. Push the initial images manually:
-
-```bash
-# Get your AWS account ID
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-REGION="us-east-1"
-
-# Authenticate Docker to ECR
-aws ecr get-login-password --region $REGION | \
-  docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
-
-# Build and push frontend
-docker build -t opsboard-frontend ./frontend
-docker tag opsboard-frontend:latest $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/opsboard-production-frontend:latest
-docker push $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/opsboard-production-frontend:latest
-
-# Build and push backend
-docker build -t opsboard-backend ./backend
-docker tag opsboard-backend:latest $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/opsboard-production-backend:latest
-docker push $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/opsboard-production-backend:latest
-```
-
-Alternatively, if a push-images script is provided:
+ECS services will fail to start until valid images exist in ECR. Push the initial images for all three services:
 
 ```bash
 chmod +x scripts/initial-push-images.sh
 ./scripts/initial-push-images.sh
+```
+
+Or manually:
+
+```bash
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+REGION="us-east-1"
+ECR_BASE="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
+
+aws ecr get-login-password --region $REGION | \
+  docker login --username AWS --password-stdin $ECR_BASE
+
+# Build and push all three services
+docker build -t ${ECR_BASE}/opsboard-production-frontend:latest frontend/
+docker push ${ECR_BASE}/opsboard-production-frontend:latest
+
+docker build -t ${ECR_BASE}/opsboard-production-core:latest services/core-service/
+docker push ${ECR_BASE}/opsboard-production-core:latest
+
+docker build -t ${ECR_BASE}/opsboard-production-deployment:latest services/deployment-service/
+docker push ${ECR_BASE}/opsboard-production-deployment:latest
 ```
 
 ---
@@ -183,12 +184,12 @@ After pushing images, ECS services should start pulling them and launching tasks
 # Check service status
 aws ecs describe-services \
   --cluster opsboard-production-cluster \
-  --services opsboard-production-frontend opsboard-production-backend \
+  --services opsboard-production-frontend opsboard-production-core opsboard-production-deployment \
   --query 'services[*].{name:serviceName,status:status,running:runningCount,desired:desiredCount}' \
   --output table
 ```
 
-Wait until `runningCount` matches `desiredCount` for both services.
+Wait until `runningCount` matches `desiredCount` for all three services.
 
 If tasks are failing, check the stopped task reasons:
 
@@ -211,8 +212,9 @@ https://cicd.manneharshithsiddardha.com
 
 Verify:
 - The frontend dashboard loads
-- The API responds at `https://cicd.manneharshithsiddardha.com/api/v1/health`
-- The database connection is working (the health endpoint reports database status)
+- Core-service health: `https://cicd.manneharshithsiddardha.com/api/v1/health` (returns `"service": "core-service"`)
+- Deployment-service health: `https://cicd.manneharshithsiddardha.com/api/v1/deployments` (returns deployment list)
+- Dashboard aggregation: `https://cicd.manneharshithsiddardha.com/api/v1/dashboard/stats` (combines data from both services)
 
 ---
 
@@ -235,11 +237,39 @@ Monitor the pipeline in the AWS Console:
 2. Click on the `opsboard-production-pipeline`
 3. Watch the Source, Build, and Deploy stages complete
 
-The blue/green deployment will:
-1. Launch new tasks on the green target groups
-2. Run health checks
-3. Shift traffic from blue to green
-4. Terminate old tasks
+The pipeline will:
+1. Build all 3 Docker images in parallel (frontend, core-service, deployment-service)
+2. Deploy deployment-service first (core-service depends on it)
+3. Deploy core-service
+4. Deploy frontend last
+5. Each deploy uses blue/green: launch green tasks → health check → shift traffic → terminate blue
+
+---
+
+## Local Development
+
+To run the full microservices stack locally:
+
+```bash
+docker compose up --build
+```
+
+This starts 5 containers:
+
+| Container | URL | Description |
+|-----------|-----|-------------|
+| frontend | http://localhost:3000 | React app served by Nginx |
+| core-service | http://localhost:5000 | Services, Incidents, Users, Dashboard |
+| deployment-service | http://localhost:5001 | Deployments + internal stats API |
+| postgres-core | localhost:5432 | Database for core-service |
+| postgres-deployment | localhost:5433 | Database for deployment-service |
+
+To seed demo data:
+
+```bash
+docker compose exec core-service flask seed
+docker compose exec deployment-service flask seed
+```
 
 ---
 
@@ -249,12 +279,13 @@ The blue/green deployment will:
 
 **Check task logs:**
 ```bash
-aws logs tail /ecs/opsboard-production-backend --since 30m
 aws logs tail /ecs/opsboard-production-frontend --since 30m
+aws logs tail /ecs/opsboard-production-core --since 30m
+aws logs tail /ecs/opsboard-production-deployment --since 30m
 ```
 
 **Common causes:**
-- Database connection refused: verify RDS is running and security groups allow traffic from backend SG to RDS SG on port 5432.
+- Database connection refused: verify RDS is running and security groups allow traffic from core/deployment SGs to RDS SG on port 5432.
 - Image not found: verify ECR has images with the expected tags.
 - Health check failing: ensure the container responds on the expected port within the health check grace period.
 
