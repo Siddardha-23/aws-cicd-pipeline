@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(find /mnt/d/Devops-Projects/aws-cicd-pipeline -type f \\\\\\(-name *prometheus* -o -name *grafana* -o -name *monitoring* \\\\\\))"
     ]
   }
 }
