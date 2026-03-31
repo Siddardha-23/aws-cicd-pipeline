@@ -168,7 +168,7 @@ resource "aws_ecs_task_definition" "frontend" {
   container_definitions = jsonencode([
     {
       name      = "frontend"
-      image     = "${var.frontend_repo_url}:PLACEHOLDER"
+      image     = "${var.frontend_repo_url}:latest"
       essential = true
 
       portMappings = [
@@ -218,7 +218,7 @@ resource "aws_ecs_task_definition" "core" {
   container_definitions = jsonencode([
     {
       name      = "core"
-      image     = "${var.core_repo_url}:PLACEHOLDER"
+      image     = "${var.core_repo_url}:latest"
       essential = true
 
       portMappings = [
@@ -306,7 +306,7 @@ resource "aws_ecs_task_definition" "deployment" {
   container_definitions = jsonencode([
     {
       name      = "deployment"
-      image     = "${var.deployment_repo_url}:PLACEHOLDER"
+      image     = "${var.deployment_repo_url}:latest"
       essential = true
 
       portMappings = [
@@ -390,7 +390,7 @@ resource "aws_ecs_task_definition" "core_migration" {
   container_definitions = jsonencode([
     {
       name      = "migration"
-      image     = "${var.core_repo_url}:PLACEHOLDER"
+      image     = "${var.core_repo_url}:latest"
       essential = true
       command   = ["./migrate.sh"]
 
@@ -435,7 +435,7 @@ resource "aws_ecs_task_definition" "deployment_migration" {
   container_definitions = jsonencode([
     {
       name      = "migration"
-      image     = "${var.deployment_repo_url}:PLACEHOLDER"
+      image     = "${var.deployment_repo_url}:latest"
       essential = true
       command   = ["./migrate.sh"]
 

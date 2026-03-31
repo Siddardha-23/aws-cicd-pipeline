@@ -19,6 +19,8 @@ module "ecr" {
   source = "./modules/ecr"
 
   name_prefix = local.name_prefix
+  aws_region  = var.aws_region
+  source_path = "${path.module}/.."
   common_tags = local.common_tags
 }
 
@@ -67,6 +69,9 @@ module "alb" {
 
 module "ecs" {
   source = "./modules/ecs"
+
+  # Ensure ECR images are pushed before ECS services try to pull them
+  depends_on = [module.ecr]
 
   name_prefix                    = local.name_prefix
   vpc_id                         = module.vpc.vpc_id

@@ -27,3 +27,8 @@ output "deployment_repo_arn" {
   description = "ARN of the deployment service ECR repository"
   value       = aws_ecr_repository.deployment.arn
 }
+
+output "images_pushed" {
+  description = "Signals that initial images have been pushed to ECR"
+  value       = null_resource.initial_image_push.id
+}

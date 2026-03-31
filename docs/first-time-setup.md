@@ -14,7 +14,7 @@ Before starting, ensure you have the following installed and configured:
 |------|---------|---------|
 | [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) | v2+ | AWS API access |
 | [Terraform](https://developer.hashicorp.com/terraform/downloads) | v1.5+ | Infrastructure provisioning |
-| [Docker](https://docs.docker.com/get-docker/) | v20+ | Building container images |
+| [Docker](https://docs.docker.com/get-docker/) | v20+ | Building container images (must be running during `terraform apply`) |
 | [Git](https://git-scm.com/) | v2+ | Source control |
 
 **AWS account requirements:**
@@ -25,6 +25,8 @@ Before starting, ensure you have the following installed and configured:
 **GitHub requirements:**
 - A GitHub account
 - The repository pushed to GitHub (the CodeStar connection will link to it)
+
+> **Note:** Docker must be running on the machine where you run `terraform apply`. Terraform automatically builds and pushes the application Docker images to ECR as part of the infrastructure provisioning — no manual image push step is required.
 
 ---
 
@@ -108,11 +110,12 @@ terraform plan
 terraform apply
 ```
 
-This takes approximately 10-15 minutes. Terraform creates:
+This takes approximately 15-20 minutes. Terraform creates:
 - VPC with 6 subnets (2 public, 2 private, 2 isolated)
 - NAT instance, Internet Gateway, route tables
 - Security groups for ALB, frontend, core-service, deployment-service, and RDS
 - ECR repositories for frontend, core-service, and deployment-service images
+- **Builds and pushes all 3 Docker images to ECR automatically** (frontend, core-service, deployment-service)
 - RDS PostgreSQL instance (shared by both backend services with separate databases)
 - SSM parameters for database credentials (per-service) and Flask secret key
 - ACM certificate (with DNS validation via Route 53)
@@ -122,11 +125,7 @@ This takes approximately 10-15 minutes. Terraform creates:
 - CloudWatch alarms (5xx errors, unhealthy targets, CPU/memory per service)
 - Route 53 A record pointing to the ALB
 
-**Save the outputs.** You will need the ECR repository URLs:
-
-```bash
-terraform output ecr_repo_urls
-```
+> **What happens during apply:** After ECR repositories are created, Terraform automatically builds and pushes the Docker images for all three services (frontend, core-service, deployment-service) with the `latest` tag. ECS services are then created and pull these images. No manual image push is needed.
 
 ---
 
@@ -144,39 +143,7 @@ The connection status should change from `PENDING` to `AVAILABLE`.
 
 ---
 
-## Step 6: Push Initial Docker Images to ECR
-
-ECS services will fail to start until valid images exist in ECR. Push the initial images for all three services:
-
-```bash
-chmod +x scripts/initial-push-images.sh
-./scripts/initial-push-images.sh
-```
-
-Or manually:
-
-```bash
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-REGION="us-east-1"
-ECR_BASE="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
-
-aws ecr get-login-password --region $REGION | \
-  docker login --username AWS --password-stdin $ECR_BASE
-
-# Build and push all three services
-docker build -t ${ECR_BASE}/opsboard-production-frontend:latest frontend/
-docker push ${ECR_BASE}/opsboard-production-frontend:latest
-
-docker build -t ${ECR_BASE}/opsboard-production-core:latest services/core-service/
-docker push ${ECR_BASE}/opsboard-production-core:latest
-
-docker build -t ${ECR_BASE}/opsboard-production-deployment:latest services/deployment-service/
-docker push ${ECR_BASE}/opsboard-production-deployment:latest
-```
-
----
-
-## Step 7: Verify ECS Services Are Running
+## Step 6: Verify ECS Services Are Running
 
 After pushing images, ECS services should start pulling them and launching tasks.
 
@@ -200,7 +167,7 @@ aws ecs list-tasks --cluster opsboard-production-cluster --desired-status STOPPE
 
 ---
 
-## Step 8: Verify the Application
+## Step 7: Verify the Application
 
 Open your browser and navigate to:
 
@@ -218,7 +185,7 @@ Verify:
 
 ---
 
-## Step 9: Trigger the Pipeline
+## Step 8: Trigger the Pipeline
 
 Now that everything is running, trigger the CI/CD pipeline with a code change:
 
@@ -286,7 +253,7 @@ aws logs tail /ecs/opsboard-production-deployment --since 30m
 
 **Common causes:**
 - Database connection refused: verify RDS is running and security groups allow traffic from core/deployment SGs to RDS SG on port 5432.
-- Image not found: verify ECR has images with the expected tags.
+- Image not found: Terraform pushes images automatically during `apply`. If this step failed, check the Terraform output for Docker build errors and ensure Docker is running. You can also manually push images using `scripts/initial-push-images.sh`.
 - Health check failing: ensure the container responds on the expected port within the health check grace period.
 
 ### ACM certificate stuck in PENDING_VALIDATION

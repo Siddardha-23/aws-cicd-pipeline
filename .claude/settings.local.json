@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(ls:*)",
-      "Bash(find /mnt/d/Devops-Projects/aws-cicd-pipeline -type f \\\\\\(-name *prometheus* -o -name *grafana* -o -name *monitoring* \\\\\\))"
+      "Bash(find /mnt/d/Devops-Projects/aws-cicd-pipeline -type f \\\\\\(-name *prometheus* -o -name *grafana* -o -name *monitoring* \\\\\\))",
+      "Bash(grep -r \"TODO\\\\|FIXME\\\\|XXX\\\\|PLACEHOLDER\\\\|PENDING\" /mnt/d/Devops-Projects/aws-cicd-pipeline --include=*.py --include=*.tf --include=*.js --include=*.ts --include=*.tsx --include=*.yml --include=*.yaml --include=*.json)",
+      "Bash(wait)",
+      "Bash(wc:*)",
+      "Bash(grep -r \"PLACEHOLDER\\\\|<ACCOUNT_ID>\\\\|<IMAGE\" /mnt/d/Devops-Projects/aws-cicd-pipeline --include=*.tf --include=*.json --include=*.yaml --include=*.yml)"
     ]
   }
 }
