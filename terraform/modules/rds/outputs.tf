@@ -1,6 +1,6 @@
 output "db_endpoint" {
-  description = "RDS instance endpoint (host:port)"
-  value       = aws_db_instance.main.endpoint
+  description = "RDS instance endpoint (hostname only)"
+  value       = aws_db_instance.main.address
 }
 
 output "db_name" {
