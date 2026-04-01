@@ -1,4 +1,4 @@
-# OpsBoard - DevOps Operations Dashboard
+# OpsBoard - DevOps Operations Dashboard 
 
 **Production-grade CI/CD pipeline: GitHub -> AWS CodePipeline -> CodeBuild -> ECS (Blue/Green via CodeDeploy)**
 
