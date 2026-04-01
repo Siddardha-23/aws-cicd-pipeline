@@ -56,7 +56,7 @@
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/opsboard-core",
+          "awslogs-group": "/ecs/opsboard-production-core",
           "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "core"
         }

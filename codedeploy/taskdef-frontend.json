@@ -20,7 +20,7 @@
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/opsboard-frontend",
+          "awslogs-group": "/ecs/opsboard-production-frontend",
           "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "frontend"
         }

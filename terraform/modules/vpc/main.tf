@@ -164,17 +164,31 @@ resource "aws_instance" "nat" {
   vpc_security_group_ids = [aws_security_group.nat.id]
   source_dest_check      = false
 
-  user_data = <<-EOF
-    #!/bin/bash
-    yum install -y iptables-services
-    systemctl enable iptables
-    systemctl start iptables
-    echo 1 > /proc/sys/net/ipv4/ip_forward
-    echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
-    IFACE=$(ip -o link show | awk -F': ' '/^[0-9]+: en/{print $2; exit}')
-    iptables -t nat -A POSTROUTING -o $IFACE -j MASQUERADE
-    iptables-save > /etc/sysconfig/iptables
-  EOF
+  user_data = base64encode(<<-SCRIPT
+#!/bin/bash
+set -ex
+# Enable IP forwarding
+echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/90-nat.conf
+sysctl -p /etc/sysctl.d/90-nat.conf
+
+# Install and configure iptables
+yum install -y iptables-services || true
+systemctl enable iptables
+systemctl start iptables
+
+# Detect primary network interface
+IFACE=$(ip route show default | awk '{print $5; exit}')
+
+# Configure NAT masquerade
+iptables -t nat -F POSTROUTING
+iptables -t nat -A POSTROUTING -o "$IFACE" -s 10.0.0.0/16 -j MASQUERADE
+iptables -F FORWARD
+iptables -A FORWARD -i "$IFACE" -o "$IFACE" -m state --state RELATED,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -s 10.0.0.0/16 -j ACCEPT
+iptables-save > /etc/sysconfig/iptables
+SCRIPT
+  )
+  user_data_replace_on_change = true
 
   tags = merge(var.common_tags, {
     Name = "${var.name_prefix}-nat-instance"
@@ -274,4 +288,5 @@ resource "aws_vpc_endpoint" "s3" {
     Name = "${var.name_prefix}-s3-endpoint"
   })
 }
+
 

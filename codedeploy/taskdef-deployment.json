@@ -52,7 +52,7 @@
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/opsboard-deployment",
+          "awslogs-group": "/ecs/opsboard-production-deployment",
           "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "deployment"
         }
