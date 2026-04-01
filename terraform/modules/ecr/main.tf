@@ -167,6 +167,7 @@ resource "null_resource" "initial_image_push" {
   }
 
   provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
     command = <<-EOT
       set -e
 

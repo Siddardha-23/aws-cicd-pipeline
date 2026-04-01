@@ -5,7 +5,7 @@
 
 terraform {
   backend "s3" {
-    bucket         = "opsboard-terraform-state-<ACCOUNT_ID>"
+    bucket         = "opsboard-terraform-state-024230653681"
     key            = "opsboard/terraform.tfstate"
     region         = "us-east-1"
     dynamodb_table = "opsboard-terraform-locks"
