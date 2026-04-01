@@ -4,8 +4,8 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "256",
   "memory": "512",
-  "executionRoleArn": "<EXECUTION_ROLE_ARN>",
-  "taskRoleArn": "<TASK_ROLE_ARN>",
+  "executionRoleArn": "arn:aws:iam::024230653681:role/opsboard-production-task-execution-role",
+  "taskRoleArn": "arn:aws:iam::024230653681:role/opsboard-production-task-role",
   "containerDefinitions": [
     {
       "name": "deployment",
