@@ -137,6 +137,34 @@ module "monitoring" {
 }
 
 ################################################################################
+# Generate CodeDeploy Task Definition Files (replace placeholder ARNs)
+################################################################################
+
+resource "local_file" "taskdef_frontend" {
+  filename = "${path.module}/../codedeploy/taskdef-frontend.json"
+  content = templatefile("${path.module}/templates/taskdef-frontend.json.tpl", {
+    execution_role_arn = module.ecs.task_execution_role_arn
+    task_role_arn      = module.ecs.task_role_arn
+  })
+}
+
+resource "local_file" "taskdef_core" {
+  filename = "${path.module}/../codedeploy/taskdef-core.json"
+  content = templatefile("${path.module}/templates/taskdef-core.json.tpl", {
+    execution_role_arn = module.ecs.task_execution_role_arn
+    task_role_arn      = module.ecs.task_role_arn
+  })
+}
+
+resource "local_file" "taskdef_deployment" {
+  filename = "${path.module}/../codedeploy/taskdef-deployment.json"
+  content = templatefile("${path.module}/templates/taskdef-deployment.json.tpl", {
+    execution_role_arn = module.ecs.task_execution_role_arn
+    task_role_arn      = module.ecs.task_role_arn
+  })
+}
+
+################################################################################
 # Route53 A Record (Alias to ALB)
 ################################################################################
 
