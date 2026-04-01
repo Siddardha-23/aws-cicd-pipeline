@@ -22,8 +22,15 @@ export function useApi<T>(fetchFn: () => Promise<T>): UseApiResult<T> {
   }, [fetchFn]);
 
   useEffect(() => {
-    refetch();
-  }, [refetch]);
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetchFn()
+      .then((result) => { if (!cancelled) setData(result); })
+      .catch((err) => { if (!cancelled) setError(err.message || 'An error occurred'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [fetchFn]);
 
   return { data, loading, error, refetch };
 }
