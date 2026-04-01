@@ -171,7 +171,8 @@ resource "aws_instance" "nat" {
     systemctl start iptables
     echo 1 > /proc/sys/net/ipv4/ip_forward
     echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
-    iptables -t nat -A POSTROUTING -o ens5 -j MASQUERADE
+    IFACE=$(ip -o link show | awk -F': ' '/^[0-9]+: en/{print $2; exit}')
+    iptables -t nat -A POSTROUTING -o $IFACE -j MASQUERADE
     iptables-save > /etc/sysconfig/iptables
   EOF
 
@@ -273,3 +274,4 @@ resource "aws_vpc_endpoint" "s3" {
     Name = "${var.name_prefix}-s3-endpoint"
   })
 }
+
