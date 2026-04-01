@@ -98,7 +98,7 @@ module "cicd" {
   source = "./modules/cicd"
 
   name_prefix              = local.name_prefix
-  github_repo              = "devops-cicd-ecs-pipeline"
+  github_repo              = "aws-cicd-pipeline"
   github_branch            = "main"
   frontend_ecr_repo_uri    = module.ecr.frontend_repo_url
   core_ecr_repo_uri        = module.ecr.core_repo_url
